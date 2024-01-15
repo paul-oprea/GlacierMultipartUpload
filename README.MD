@@ -2,9 +2,7 @@
 
 ## Overview
 
-Shows how to use the AWS SDK for Python (Boto3) to work with Amazon S3 Glacier.
-
-_S3 Glacier provides durable and extremely low-cost storage for infrequently used data with security features for data archiving and backup._
+Automates uploading large files, specifically those over 10 gigabytes, to AWS Glacier using the multipart upload API
 
 ## ⚠ Important
 
