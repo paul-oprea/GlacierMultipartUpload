@@ -1,8 +1,8 @@
-# S3 Glacier Multipart Upload
+# AWS Glacier Multipart Upload
 
 ## Overview
 
-Automates uploading large files, specifically those over 10 gigabytes, to AWS Glacier using the multipart upload API
+Automates uploading large files, (especially useful for those over 10 gigabytes), to AWS Glacier using the multipart upload API
 
 ## ⚠ Important
 
@@ -13,12 +13,14 @@ Automates uploading large files, specifically those over 10 gigabytes, to AWS Gl
 ## Code
 
 ### Prerequisites
+#### AWS CLI
+The code assumes that AWS CLI has been installed and configured in the system
 
-
-Install botocore by running the following in a virtual environment:
+#### Python Libraries
+Install the required libraries by running the following in a virtual environment:
 
 ```
-python -m pip install botocore
+python -m pip install botocore, bboto3
 ```
 
 <!--custom.prerequisites.start-->
@@ -32,12 +34,21 @@ python -m pip install botocore
 
 
 
-Start the example by running the following at a command prompt:
+At a command prompt run the following:
 
 ```
 python GlacierMPU.py file_path vault_name [archive comment]
 ```
+where:
+- file_path is the _complete_ file path of the file; if it contains blanks, wrap it with double quotes
+- vault_name is the name of the Glacier vault
+- archive comment is optional and needs to be wrapped in double quotes (if it's ommitted then the archive is initialized with the string 'Archive for ' file_path) 
 
+#### Example
+
+```
+python GlacierMPU.py "C:\Users\joebloggs\my big archive.zip" My_Vault "family photos and videos from the years in ZIP format"
+```
 
 Copyright Paul Tudor OPREA 2024.
 
