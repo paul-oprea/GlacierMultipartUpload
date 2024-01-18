@@ -20,7 +20,7 @@ The code assumes that AWS CLI has been installed and configured in the system
 Install the required libraries by running the following in a virtual environment:
 
 ```
-python -m pip install botocore, bboto3
+python -m pip install botocore, boto3, argparse
 ```
 
 <!--custom.prerequisites.start-->

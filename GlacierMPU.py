@@ -16,6 +16,7 @@
 import os
 import sys
 import boto3
+import argparse
 
 from GlacierChecksum import __MEGABYTE__, to_hex, compute_file_tree_hash, compute_bytearray_tree_hash
 
@@ -77,28 +78,50 @@ def finish_multipart_upload(vault, uploadId, archiveSize, checksum):
 
 
 if __name__ == '__main__':
-    file_path = sys.argv[1]
-    vault_name = sys.argv[2]
-    if len(sys.argv) > 3:
-        comment_name = sys.argv[3]
+    parser = argparse.ArgumentParser(description="Glacier Multipart Uploader")
+
+    # Define arguments
+    parser.add_argument("--source-path", type=str, help="Full path to the source file", required=True)
+    parser.add_argument("--vault", type=str, help="The name of the vault", required=True)
+    parser.add_argument("--comment", type=str, help="Optional comment to be added to the archive, default is Archive for + file path")
+    parser.add_argument("--upload-id", type=str, help="The upload id of an already started upload session")
+    parser.add_argument("--blocksize", type=int, help="block size in MB (only valid powers of 2)")
+    parser.add_argument("--start", type=int, help="the start block")
+    parser.add_argument("--end", type=int, help="the end block")
+    parser.add_argument("--finish-upload", action="store_true", help="Whether to attempt to close the upload session at the end of the upload (default True) ")
+    args = parser.parse_args()
+
+    file_path = args.source_path
+    vault_name = args.vault
+    if args.comment is not None:
+        comment_name = args.comment
     else:
         comment_name = 'Archive containing file ' + file_path
-    blocksize = 128 * __MEGABYTE__
+    if args.blocksize is not None:
+        blocksize = args.blocksize * __MEGABYTE__
+    else:
+        blocksize = 128 * __MEGABYTE__
 
-    if len(sys.argv) > 4:
-        upload_id = sys.argv[4]
+    if args.upload_id is not None:
+        upload_id = args.upload_id
     else:
         upload_id = initiate_multipart_upload(vault_name, comment_name, blocksize)
         print('Successfully initiated upload ID:\t' + upload_id)
-    if len(sys.argv) > 5:
-        start_block = int(sys.argv[5])
+    if args.start is not None:
+        start_block = args.start
     else:
         start_block = 0
-    if len(sys.argv) > 6:
-        end_block = int(sys.argv[6])
+    if args.end is not None:
+        end_block = args.end
+
+    if args.finish_upload is None:
+        finish_upload = True
+    else:
+        finish_upload = args.finish_upload
     try:
         filesize = body_upload(file_path, vault_name, upload_id, blocksize, start_block)
-        response = finish_multipart_upload(vault_name, upload_id, filesize, compute_file_tree_hash(file_path))
+        if finish_upload:
+            response = finish_multipart_upload(vault_name, upload_id, filesize, compute_file_tree_hash(file_path))
         try:
             print('Completion attempt response HTTPStatusCode:\t' + str(response['ResponseMetadata']['HTTPStatusCode']))
             print('Successfully completed upload ID:\t' + upload_id)
@@ -106,7 +129,9 @@ if __name__ == '__main__':
             print('Could not parse the response metadata')
     except Exception as e:
         print(e)
-        glacier.abort_multipart_upload(
-            vaultName=vault_name,
-            uploadId=upload_id
-        )
+        if finish_upload:
+            glacier.abort_multipart_upload(
+                vaultName=vault_name,
+                uploadId=upload_id
+            )
+
