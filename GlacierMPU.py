@@ -22,13 +22,14 @@ from GlacierChecksum import __MEGABYTE__, to_hex, compute_file_tree_hash, comput
 glacier = boto3.client('glacier') # create a client object to access Glacier as a global object since only one is needed
 
 # Upload a file to Glacier in multiple parts
-def body_upload(file_path, vault_name, upload_id, blocksize):
-    counter = 0
+def body_upload(file_path, vault_name, upload_id, blocksize, start_block = 0, end_block = -1 ):
     filesize = os.stat(file_path).st_size
+    if end_block == -1:
+        end_block = int(filesize / blocksize)
     with open(file_path, 'rb') as f:
-        while counter * blocksize <= filesize:
-            print('Uploading segment\t' + str(counter + 1) + '\tout of \t' + str(int(filesize / blocksize) + 1))
-            start = int(counter * blocksize)
+        while start_block * blocksize <= min(filesize, end_block * blocksize):
+            print('Uploading segment\t' + str(start_block + 1) + '\tout of \t' + str(int(filesize / blocksize) + 1))
+            start = int(start_block * blocksize)
             f.seek(start)
             block = f.read(blocksize)
             end = int(start + len(block) - 1)
@@ -36,7 +37,7 @@ def body_upload(file_path, vault_name, upload_id, blocksize):
             tree_hash = compute_bytearray_tree_hash(block)
             print(to_hex(tree_hash))
             upload_segment(block, start, end, to_hex(tree_hash), vault_name, upload_id)
-            counter += 1
+            start_block += 1
     f.close()
     return filesize
 
@@ -78,16 +79,25 @@ def finish_multipart_upload(vault, uploadId, archiveSize, checksum):
 if __name__ == '__main__':
     file_path = sys.argv[1]
     vault_name = sys.argv[2]
-    if len(sys.argv) >= 3:
+    if len(sys.argv) > 3:
         comment_name = sys.argv[3]
     else:
         comment_name = 'Archive containing file ' + file_path
     blocksize = 128 * __MEGABYTE__
-    upload_id = initiate_multipart_upload(vault_name, comment_name, blocksize)
 
-    print('Successfully initiated upload ID:\t' + upload_id)
+    if len(sys.argv) > 4:
+        upload_id = sys.argv[4]
+    else:
+        upload_id = initiate_multipart_upload(vault_name, comment_name, blocksize)
+        print('Successfully initiated upload ID:\t' + upload_id)
+    if len(sys.argv) > 5:
+        start_block = int(sys.argv[5])
+    else:
+        start_block = 0
+    if len(sys.argv) > 6:
+        end_block = int(sys.argv[6])
     try:
-        filesize = body_upload(file_path, vault_name, upload_id, blocksize)
+        filesize = body_upload(file_path, vault_name, upload_id, blocksize, start_block)
         response = finish_multipart_upload(vault_name, upload_id, filesize, compute_file_tree_hash(file_path))
         try:
             print('Completion attempt response HTTPStatusCode:\t' + str(response['ResponseMetadata']['HTTPStatusCode']))
