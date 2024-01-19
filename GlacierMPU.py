@@ -88,7 +88,8 @@ if __name__ == '__main__':
     parser.add_argument("--blocksize", type=int, help="block size in MB (only valid powers of 2)")
     parser.add_argument("--start", type=int, help="the start block")
     parser.add_argument("--end", type=int, help="the end block")
-    parser.add_argument("--finish-upload", action="store_true", help="Whether to attempt to close the upload session at the end of the upload (default True) ")
+    parser.add_argument("--finish-upload", type=str, choices=['True', 'False'], help="Whether to attempt to close the upload session at the end of the upload (default True) ")
+
     args = parser.parse_args()
 
     file_path = args.source_path
@@ -117,7 +118,7 @@ if __name__ == '__main__':
     if args.finish_upload is None:
         finish_upload = True
     else:
-        finish_upload = args.finish_upload
+        finish_upload = bool(args.finish_upload)
     try:
         filesize = body_upload(file_path, vault_name, upload_id, blocksize, start_block)
         if finish_upload:
