@@ -37,17 +37,25 @@ python -m pip install botocore, boto3, argparse
 At a command prompt run the following:
 
 ```
-python GlacierMPU.py file_path vault_name [archive comment]
+python GlacierMPU.py --source-path SOURCE_PATH --vault VAULT
+                     [--comment COMMENT] [--upload-id UPLOAD_ID]
+                     [--blocksize BLOCKSIZE] [--start START] [--end END]
+                     [--finish-upload {True,False}]
 ```
 where:
-- file_path is the _complete_ file path of the file; if it contains blanks, wrap it with double quotes
-- vault_name is the name of the Glacier vault
-- archive comment is optional and needs to be wrapped in double quotes (if it's ommitted then the archive is initialized with the string 'Archive for ' file_path) 
+- source-path is the _complete_ file path of the file; if it contains blanks, wrap it with double quotes;
+- vault is the name of the Glacier vault; if it contains blanks, wrap it with double quotes;
+- archive comment is optional and needs to be wrapped in double quotes (if it's omitted then the archive is initialized with the string 'Archive for ' source_path);
+- upload-id is optional and is used to resume an upload that was interrupted; 
+- blocksize is optional and is the size of the block in MB; it needs to be a power of 2; if it's omitted then the default value of 128MB is used;
+- start is optional and is the block number from which to start the upload; if it's omitted then the default value of 0 is used;
+- end is optional and is the block number at which to end the upload; if it's omitted then the default value of the number of blocks in the file is used;
+- finish-upload is optional and is a boolean value indicating if to attempt to close the upload after all blocks have been uploaded (the only situation in which setting it to False is useful is if you want to only upload file chunks which may have failed in the middle, and finish the process later); if it's omitted then the default value of True is used;
 
 #### Example
 
 ```
-python GlacierMPU.py "C:\Users\joebloggs\my big archive.zip" My_Vault "family photos and videos from the years in ZIP format"
+python GlacierMPU.py --source-path "C:\Users\joebloggs\my big archive.zip" --vault My_Vault --comment "family photos and videos from the years in ZIP format"
 ```
 
 Copyright Paul Tudor OPREA 2024.
