@@ -20,10 +20,12 @@ import argparse
 
 from GlacierChecksum import __MEGABYTE__, to_hex, compute_file_tree_hash, compute_bytearray_tree_hash
 
-glacier = boto3.client('glacier') # create a client object to access Glacier as a global object since only one is needed
+glacier = boto3.client(
+    'glacier')  # create a client object to access Glacier as a global object since only one is needed
+
 
 # Upload a file to Glacier in multiple parts
-def body_upload(file_path, vault_name, upload_id, blocksize, start_block = 0, end_block = -1 ):
+def body_upload(file_path, vault_name, upload_id, blocksize, start_block=0, end_block=-1):
     filesize = os.stat(file_path).st_size
     if end_block == -1:
         end_block = int(filesize / blocksize)
@@ -66,6 +68,7 @@ def initiate_multipart_upload(vault, archiveDescription, partsize, ):
     print(response)
     return response['uploadId']
 
+
 # invoke a multipart upload finish API call to Glacier
 def finish_multipart_upload(vault, uploadId, archiveSize, checksum):
     finish_response = glacier.complete_multipart_upload(
@@ -76,19 +79,24 @@ def finish_multipart_upload(vault, uploadId, archiveSize, checksum):
     )
     return finish_response
 
+def abort_multipart_upload(vault, uploadId):
+    glacier.abort_multipart_upload(
+        vaultName=vault,
+        uploadId=uploadId
+    )
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Glacier Multipart Uploader")
-
+def initialize_context(parser):
     # Define arguments
     parser.add_argument("--source-path", type=str, help="Full path to the source file", required=True)
     parser.add_argument("--vault", type=str, help="The name of the vault", required=True)
-    parser.add_argument("--comment", type=str, help="Optional comment to be added to the archive, default is Archive for + file path")
+    parser.add_argument("--comment", type=str,
+                        help="Optional comment to be added to the archive, default is Archive for + file path")
     parser.add_argument("--upload-id", type=str, help="The upload id of an already started upload session")
     parser.add_argument("--blocksize", type=int, help="block size in MB (only valid powers of 2)")
     parser.add_argument("--start", type=int, help="the start block")
     parser.add_argument("--end", type=int, help="the end block")
-    parser.add_argument("--finish-upload", type=str, choices=['True', 'False'], help="Whether to attempt to close the upload session at the end of the upload (default True) ")
+    parser.add_argument("--finish-upload", type=str, choices=['True', 'False'],
+                        help="Whether to attempt to close the upload session at the end of the upload (default True) ")
 
     args = parser.parse_args()
 
@@ -114,11 +122,20 @@ if __name__ == '__main__':
         start_block = 0
     if args.end is not None:
         end_block = args.end
+    else:
+        end_block = -1
 
     if args.finish_upload is None:
         finish_upload = True
     else:
         finish_upload = bool(args.finish_upload)
+
+    return file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="Glacier Multipart Uploader")
+    file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload = initialize_context(parser)
     try:
         filesize = body_upload(file_path, vault_name, upload_id, blocksize, start_block)
         if finish_upload:
@@ -131,8 +148,4 @@ if __name__ == '__main__':
     except Exception as e:
         print(e)
         if finish_upload:
-            glacier.abort_multipart_upload(
-                vaultName=vault_name,
-                uploadId=upload_id
-            )
-
+            abort_multipart_upload(vault_name, upload_id)
