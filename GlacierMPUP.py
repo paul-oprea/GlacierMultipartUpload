@@ -46,7 +46,7 @@ def body_upload(f, file_size, vault_name, upload_id, blocksize, start_block = 0,
         end = int(start + len(block) - 1)
 
         start_block += 1
-        while common_counter > __CAPACITY__:
+        while common_counter > thread_max:
             print(f"Reached parallel quota, waiting for active threads to finish...")
             time.sleep(1)
         thread = threading.Thread(target=upload_thread, args=(i, block, upload_id, start, end, '', vault_name))
@@ -63,7 +63,9 @@ def body_upload(f, file_size, vault_name, upload_id, blocksize, start_block = 0,
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="Glacier Multipart Uploader - Multithreaded")
-    file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload = initialize_context(parser)
+    file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload, thread_max = initialize_context(parser)
+    if thread_max < 1:
+        thread_max = __CAPACITY__
 
     file_size = os.stat(file_path).st_size
     file = open_binary_file(file_path)

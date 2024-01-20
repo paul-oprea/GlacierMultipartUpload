@@ -95,6 +95,7 @@ def initialize_context(parser):
     parser.add_argument("--blocksize", type=int, help="block size in MB (only valid powers of 2)")
     parser.add_argument("--start", type=int, help="the start block")
     parser.add_argument("--end", type=int, help="the end block")
+    parser.add_argument("--threads", type=int, help="Maximum number of threads to use for upload")
     parser.add_argument("--finish-upload", type=str, choices=['True', 'False'],
                         help="Whether to attempt to close the upload session at the end of the upload (default True) ")
 
@@ -130,7 +131,12 @@ def initialize_context(parser):
     else:
         finish_upload = bool(args.finish_upload)
 
-    return file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload
+    if args.threads is not None:
+        threads = args.threads
+    else:
+        threads = -1
+
+    return file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload, threads
 
 
 if __name__ == '__main__':
