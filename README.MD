@@ -71,8 +71,10 @@ The application logic is as follows:
 1. A new upload is initiated and the upload-id is created for the whole batch (except when the upload-id from a previous run is provided to be resumed);
 2. The file is read into blocks of the specified size;
 3. Each block is uploaded (in a separate thread when parallel upload is used);
-4. If any of the block uploads fails, then the entire process is stopped; if finish-upload is True, then the entire batch is aborted; if finish-upload is False, the batch is left open for a future run, and the upload-id can still be reused for about a day;
-6. If the batch upload is successful and finish-upload is True, then the upload is closed and the archive-id is returned;
+4. If any of the block uploads fails:
+   1. in the serial run, the entire process is stopped; if finish-upload is True, then the entire batch is aborted; if finish-upload is False, the batch is left open for a future run, and the upload-id can still be reused for about a day;
+   2. in the parallel run, the upload continues with the next blocks. You can capture the IDs of failed threads from the output window and re-run the application with the same upload-id, but with the start and end parameters set to the block numbers of the failed threads. The application will then re-upload only the failed blocks;
+5. If the batch upload is successful and all blocks have been uploaded, and finish-upload is True, then the upload is closed and the archive-id is returned;
 
 #### Parallel upload
 The optimal number of threads to use for uploading needs to be chosen depending on the network bandwidth and the number of cores of the CPU. If thread count is too low, the upload will be slower than hardware allows.

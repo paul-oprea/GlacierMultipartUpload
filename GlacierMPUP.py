@@ -17,13 +17,17 @@ lock = threading.Lock()
 
 def upload_thread(thread_id, block_contents, upload_id, start, end, checksum, vault_name):
     global common_counter
-    with lock:
-        common_counter += 1
     tree_hash = compute_bytearray_tree_hash(block_contents)
     print( "\nThread\t" + str(thread_id) + "\tcomputing hash value \t" + to_hex(tree_hash))
-    upload_segment(block_contents, start, end, to_hex(tree_hash), vault_name, upload_id)
     with lock:
-        common_counter -= 1
+        common_counter += 1
+    try:
+        upload_segment(block_contents, start, end, to_hex(tree_hash), vault_name, upload_id)
+    except Exception as e:
+        print(f"Error in thread {thread_id} uploading segment {start} : {e}")
+    finally:
+        with lock:
+            common_counter -= 1
 
 
 # Open a binary file and return a handle
