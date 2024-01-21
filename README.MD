@@ -6,8 +6,7 @@ Automates uploading large files, (especially useful for those over 10 gigabytes)
 
 ## ⚠ Important
 
-* Running this code might result in charges to your AWS account. For more details, see [AWS Pricing](https://aws.amazon.com/pricing/) and [Free Tier](https://aws.amazon.com/free/).
-* Running the tests might result in charges to your AWS account.
+* Running this code might result in charges to your AWS account. For more details, see [AWS Pricing](https://aws.amazon.com/pricing/) and [Free Tier](https://aws.amazon.com/free/). That being said, upload costs associated with Glacier are usually very small, and the data ingress is currently free.
 * We recommend that you grant your code least privilege. At most, grant only the minimum permissions required to perform the task. For more information, see [Grant least privilege](https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege).
 
 ## Code
@@ -73,7 +72,7 @@ The application logic is as follows:
 3. Each block is uploaded (in a separate thread when parallel upload is used);
 4. If any of the block uploads fails:
    1. in the serial run, the entire process is stopped; if finish-upload is True, then the entire batch is aborted; if finish-upload is False, the batch is left open for a future run, and the upload-id can still be reused for about a day;
-   2. in the parallel run, the upload continues with the next blocks. You can capture the IDs of failed threads from the output window and re-run the application with the same upload-id, but with the start and end parameters set to the block numbers of the failed threads. The application will then re-upload only the failed blocks;
+   2. in the parallel run, the failed block is re-queued. Currently it is advisable you monitor the process, as when there is only one block left to upload, if too many retries have been attempted, the API endpoint may hit a limit and block you for a few hours.
 5. If the batch upload is successful and all blocks have been uploaded, and finish-upload is True, then the upload is closed and the archive-id is returned;
 
 #### Parallel upload
