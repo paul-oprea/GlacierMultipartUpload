@@ -23,6 +23,16 @@ from GlacierChecksum import __MEGABYTE__, to_hex, compute_file_tree_hash, comput
 glacier = boto3.client(
     'glacier')  # create a client object to access Glacier as a global object since only one is needed
 
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
 
 # Upload a file to Glacier in multiple parts
 def body_upload(file_path, vault_name, upload_id, blocksize, start_block=0, end_block=-1):
@@ -55,7 +65,7 @@ def upload_segment(block, start, end, checksum, vault, uploadId):
         range='bytes ' + str(start) + '-' + str(end) + '/*',
         body=block
     )
-    print(segment_response)
+    print(bcolors.OKBLUE + str(segment_response) + bcolors.ENDC)
 
 
 # invoke a multipart initiation API call to Glacier
@@ -66,7 +76,7 @@ def initiate_multipart_upload(vault, archiveDescription, partsize, ):
         archiveDescription=archiveDescription,
         partSize=str(partsize)
     )
-    print(response)
+    print(bcolors.OKBLUE + str(response) + bcolors.ENDC)
     return response['uploadId']
 
 
@@ -147,12 +157,12 @@ if __name__ == '__main__':
         filesize = body_upload(file_path, vault_name, upload_id, blocksize, start_block)
         if finish_upload:
             response = finish_multipart_upload(vault_name, upload_id, filesize, compute_file_tree_hash(file_path))
-        try:
-            print('Completion attempt response HTTPStatusCode:\t' + str(response['ResponseMetadata']['HTTPStatusCode']))
-            print('Successfully completed upload ID:\t' + upload_id)
-        except:
-            print('Could not parse the response metadata')
+            try:
+                print(bcolors.OKBLUE + 'Completion attempt response HTTPStatusCode:\t' + str(response['ResponseMetadata']['HTTPStatusCode']) + bcolors.ENDC)
+                print(bcolors.OKGREEN + f'Successfully completed upload ID:\t{upload_id}' + bcolors.ENDC)
+            except:
+                print(bcolors.WARNING + 'Could not parse the response metadata' + bcolors.ENDC)
     except Exception as e:
-        print(e)
+        print(bcolors.FAIL + str(e) + bcolors.ENDC)
         if finish_upload:
             abort_multipart_upload(vault_name, upload_id)
