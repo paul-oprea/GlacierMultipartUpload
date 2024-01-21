@@ -57,7 +57,7 @@ def body_upload(file_path, vault_name, upload_id, blocksize, start_block=0, end_
 
 # invoke an API call to upload a multipart segment to Glacier
 def upload_segment(block, start, end, checksum, vault, uploadId):
-    print(f"\nStarting upload for segment {start} to {end}")
+    print(f"\nStarting upload for segment {start}-{end}")
     segment_response = glacier.upload_multipart_part(
         vaultName=vault,
         uploadId=uploadId,
@@ -152,7 +152,7 @@ def initialize_context(parser):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Glacier Multipart Uploader")
-    file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload = initialize_context(parser)
+    file_path, vault_name, upload_id, blocksize, start_block, end_block, finish_upload, nonusedthreads = initialize_context(parser)
     try:
         filesize = body_upload(file_path, vault_name, upload_id, blocksize, start_block)
         if finish_upload:
