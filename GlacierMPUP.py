@@ -23,6 +23,9 @@ import threading
 import time
 import random
 
+import logging
+import logging.handlers
+
 from GlacierChecksum import compute_bytearray_tree_hash, to_hex, __MEGABYTE__, compute_file_tree_hash
 from GlacierMPU import initialize_context, upload_segment, abort_multipart_upload, finish_multipart_upload, bcolors
 
@@ -32,6 +35,32 @@ __CAPACITY__ = 3
 lock = threading.Lock()
 q = queue.Queue(maxsize=__CAPACITY__)
 
+logger = logging.getLogger("gmu")
+logger.setLevel(logging.DEBUG)
+_handler = logging.StreamHandler()  # defaults to sys.stderr → your terminal
+_handler.setFormatter(logging.Formatter(
+    "%(asctime)s %(levelname)-7s [%(threadName)s] %(message)s",
+    datefmt="%H:%M:%S",
+))
+logger.addHandler(_handler)
+
+def _try_acquire_slot():
+    global common_counter
+    with lock:
+        if common_counter >= thread_max:
+            return False
+        common_counter += 1
+        return True
+
+# def _inc_common_counter():
+#     global common_counter
+#     with lock:
+#         common_counter += 1
+
+def _dec_common_counter():
+    global common_counter
+    with lock:
+        common_counter -= 1
 
 def upload_segment_simulate(block, start, end, checksum, vault, uploadId):
     interval = random.randint(1, 30)
@@ -41,22 +70,20 @@ def upload_segment_simulate(block, start, end, checksum, vault, uploadId):
         raise Exception("Random exception")
     else:
         print(bcolors.OKBLUE + f"Upload of block starting at {start} ending at {end} DONE" + bcolors.ENDC)
+
 def upload_thread():
-    global common_counter
-    while common_counter <= thread_max:
+    while _try_acquire_slot():
         try:
-            with lock:
-                common_counter += 1
             thread_id, block_contents, upload_id, start, end, tree_hash, vault_name = q.get()
-            print(f"Thread {thread_id} got start segment {start} from queue of size {q.qsize()}")
+            logger.info(f"Thread {thread_id} got start segment {start} from queue of size {q.qsize()}")
             upload_segment(block_contents, start, end, to_hex(tree_hash), vault_name, upload_id)
         except Exception as e:
-            print(bcolors.FAIL + f'Error in thread {thread_id} uploading segment {start} : {e}. Putting it back in queue'   + bcolors.ENDC)
+            logger.error("Thread %d segment %d failed: %s — requeueing", thread_id, start, e)
             q.put((thread_id, block_contents, upload_id, start, end, tree_hash, vault_name))
-            threading.Thread(target=upload_thread, daemon=True).start()
+#            _inc_common_counter()
+#            threading.Thread(target=upload_thread, daemon=True).start()
         finally:
-            with lock:
-                common_counter -= 1
+            _dec_common_counter()
             q.task_done()
 
 
@@ -71,8 +98,8 @@ def body_upload(f, file_size, vault_name, upload_id, blocksize, start_block = 0,
     # Creating multiple threads
     i = 0
     while start_block * blocksize <= min(file_size, end_block * blocksize):
-
-        print('\nReading segment\t' + str(start_block + 1) + '\tout of \t' + str(int(file_size / blocksize) + 1))
+        logger.info("Reading segment %d of %d", start_block + 1, int(file_size / blocksize) + 1)
+        # print('\nReading segment\t' + str(start_block + 1) + '\tout of \t' + str(int(file_size / blocksize) + 1))
         start = int(start_block * blocksize)
         f.seek(start)
         block = f.read(blocksize)
@@ -80,8 +107,8 @@ def body_upload(f, file_size, vault_name, upload_id, blocksize, start_block = 0,
 
         start_block += 1
         tree_hash = compute_bytearray_tree_hash(block)
-        print( f"\nHash value for start segment {start}:\t{to_hex(tree_hash)}")
-
+        # print( f"\nHash value for start segment {start}:\t{to_hex(tree_hash)}")
+        logger.debug("Hash for segment %d: %s", start, to_hex(tree_hash))
         q.put([i, block, upload_id, start, end, tree_hash, vault_name])
         # threading.Thread(target=upload_thread, args=(i, block, upload_id, start, end, tree_hash, vault_name)).start()
         threading.Thread(target=upload_thread, daemon=True).start()

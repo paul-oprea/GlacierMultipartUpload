@@ -40,7 +40,7 @@ def body_upload(file_path, vault_name, upload_id, blocksize, start_block=0, end_
     if end_block == -1:
         end_block = int(filesize / blocksize)
     with open(file_path, 'rb') as f:
-        while start_block * blocksize <= min(filesize, end_block * blocksize):
+        while start_block * blocksize < min(filesize, end_block * blocksize):
             print('Uploading segment\t' + str(start_block + 1) + '\tout of \t' + str(int(filesize / blocksize) + 1))
             start = int(start_block * blocksize)
             f.seek(start)
@@ -66,9 +66,21 @@ def upload_segment(block, start, end, checksum, vault, uploadId):
         body=block
     )
     print(bcolors.OKBLUE + str(segment_response) + bcolors.ENDC)
+    meta = segment_response.get("ResponseMetadata", {})
+    status = meta.get("HTTPStatusCode")
+    request_id = meta.get("RequestId", "<none>")
+    if not (200 <= status < 300):
+        raise RuntimeError(
+            f"upload_multipart_part failed: HTTP {status} (request_id={request_id})"
+        )
+    server_checksum = segment_response["checksum"]
+    if server_checksum != checksum:
+        raise RuntimeError(
+            f"checksum mismatch for bytes {start}-{end}: "
+            f"local={checksum} server={server_checksum}"
+        )
 
-
-# invoke a multipart initiation API call to Glacier
+    # invoke a multipart initiation API call to Glacier
 def initiate_multipart_upload(vault, archiveDescription, partsize, ):
     glacier = boto3.client('glacier')
     response = glacier.initiate_multipart_upload(

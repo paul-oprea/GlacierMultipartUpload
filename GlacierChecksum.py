@@ -70,7 +70,7 @@ def compute_file_tree_hash(file_name):
     counter = 0
     list = []
     with open(file_name, 'rb') as f:
-        while counter * __MEGABYTE__ <= filesize:
+        while counter * __MEGABYTE__ < filesize:
             print('\rComputing treehash for the entire file %d%% ' % (int(counter * 100 * __MEGABYTE__ /filesize ) ), end='')
             start = int(counter * __MEGABYTE__)
             f.seek(start)
